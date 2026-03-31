@@ -3,6 +3,9 @@ package entities
 import (
 	"minifarm/internal/events"
 	"minifarm/internal/gametypes"
+	"minifarm/internal/storage"
+
+	"github.com/hajimehoshi/ebiten/v2"
 )
 
 // Publisher - издатель.
@@ -82,4 +85,13 @@ func (bar *ToolbarComponent) ChangeActiveTool(i int) {
 	} else {
 		return
 	}
+}
+
+type SpriteComponent struct {
+	storage  *storage.AssetStorage
+	spriteID storage.SpriteID
+}
+
+func (sprite *SpriteComponent) Sprite() *ebiten.Image {
+	return sprite.storage.GetSpriteByID(sprite.spriteID)
 }

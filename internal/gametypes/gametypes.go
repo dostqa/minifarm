@@ -15,7 +15,7 @@ type ToolType int
 
 const (
 	NoTool ToolType = iota
-	Pickaxe
+	PickaxeTool
 	AxeTool
 	SwordTool
 	HoeTool

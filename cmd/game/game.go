@@ -6,6 +6,8 @@ import (
 	"minifarm/internal/entities"
 	"minifarm/internal/gametypes"
 	"minifarm/internal/input"
+	"minifarm/internal/render"
+	"minifarm/internal/ticker"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -16,7 +18,7 @@ type Game struct {
 }
 
 func NewGame() *Game {
-	player := entities.NewPlayer(nil)
+	player := entities.NewPlayer(nil, nil)
 
 	return &Game{
 		player: player,
@@ -24,6 +26,8 @@ func NewGame() *Game {
 }
 
 func (g *Game) Update() error {
+	ticker.DefaultTicker.Update()
+
 	err := input.DefaultInput.HandleInput(g.player)
 	commands.DefaultInvoker.ExecuteCommmands()
 
@@ -35,5 +39,8 @@ func (g *Game) Update() error {
 	return err
 }
 
-func (g *Game) Draw(screen *ebiten.Image)  {}
-func (g *Game) Layout(_, _ int) (int, int) { return 1, 1 }
+func (g *Game) Draw(screen *ebiten.Image) {
+	render.DefaultRender.Render(screen, g.player)
+}
+
+func (g *Game) Layout(_, _ int) (int, int) { return 600, 600 }
