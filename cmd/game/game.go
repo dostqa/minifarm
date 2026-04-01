@@ -1,10 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"minifarm/internal/commands"
 	"minifarm/internal/entities"
-	"minifarm/internal/gametypes"
 	"minifarm/internal/input"
 	"minifarm/internal/render"
 	"minifarm/internal/ticker"
@@ -13,8 +11,7 @@ import (
 )
 
 type Game struct {
-	player  *entities.Player
-	changes gametypes.Point
+	player *entities.Player
 }
 
 func NewGame() *Game {
@@ -30,11 +27,6 @@ func (g *Game) Update() error {
 
 	err := input.DefaultInput.HandleInput(g.player)
 	commands.DefaultInvoker.ExecuteCommmands()
-
-	if !((g.player.X() == g.changes[0]) && (g.player.Y() == g.changes[1])) {
-		fmt.Println(g.player)
-	}
-	g.changes = gametypes.Point{g.player.X(), g.player.Y()}
 
 	return err
 }

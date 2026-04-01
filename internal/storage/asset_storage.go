@@ -1,11 +1,10 @@
 package storage
 
 import (
-	"fmt"
 	"image"
 	_ "image/png"
 	"log"
-	"minifarm/internal/ticker"
+	"minifarm/internal/gametypes"
 	"os"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -21,32 +20,67 @@ var DefaultAssetStorage *AssetStorage
 
 func init() {
 	DefaultAssetStorage = &AssetStorage{
-		ticker: ticker.DefaultTicker,
-		cache:  make(map[SpriteID][]*ebiten.Image),
+		cache: make(map[string][]*ebiten.Image),
 	}
 }
 
-type SpriteID string
-
-const (
-	PlayerSprite SpriteID = "./assets/sprites/player.png"
-)
-
-type AssetStorage struct {
-	ticker *ticker.Ticker
-	cache  map[SpriteID][]*ebiten.Image
+// ticker - подсказывает только, какой сейчас кадр.
+// Каждую секунду начинает отсчет сначала
+type ticker interface {
+	NowFrame() int
 }
 
-func (storage *AssetStorage) GetSpriteByID(path SpriteID) *ebiten.Image {
+// Condition - описывает в каком состоянии находится сущность.
+// Если сущность соверщает движение velocity != {0, 0}
+type Condition struct {
+	velocity gametypes.Vector
+	facing   gametypes.Vector
+}
+
+var (
+	MovesUp    = Condition{gametypes.UpVector, gametypes.UpVector}
+	MovesRight = Condition{gametypes.RightVector, gametypes.RightVector}
+	MovesDown  = Condition{gametypes.DownVector, gametypes.DownVector}
+	MovesLeft  = Condition{gametypes.LeftVector, gametypes.LeftVector}
+	LooksUp    = Condition{gametypes.ZeroVector, gametypes.UpVector}
+	LooksRight = Condition{gametypes.ZeroVector, gametypes.RightVector}
+	LooksDown  = Condition{gametypes.ZeroVector, gametypes.DownVector}
+	LooksLeft  = Condition{gametypes.ZeroVector, gametypes.LeftVector}
+)
+
+func NewCondition(velocity, facing gametypes.Vector) Condition {
+	return Condition{velocity: velocity, facing: facing}
+}
+
+type SpritesID = map[Condition]string
+
+var PlayerSprites = SpritesID{
+	MovesUp:    "./assets/sprites/player_moves_up.png",
+	MovesRight: "./assets/sprites/player_moves_right.png",
+	MovesDown:  "./assets/sprites/player_moves_down.png",
+	MovesLeft:  "./assets/sprites/player_moves_Left.png",
+	LooksUp:    "./assets/sprites/player_looks_up.png",
+	LooksRight: "./assets/sprites/player_looks_right.png",
+	LooksDown:  "./assets/sprites/player_looks_down.png",
+	LooksLeft:  "./assets/sprites/player_looks_left.png",
+}
+
+type AssetStorage struct {
+	ticker ticker
+	// В кэш изображения складываются только для одного состояния (одного пути)
+	cache map[string][]*ebiten.Image
+}
+
+func (storage *AssetStorage) GetSpriteByName(path string) *ebiten.Image {
 	if frames, ok := storage.cache[path]; ok {
-		return frames[ticker.DefaultTicker.NowFrame()]
+		return frames[storage.ticker.NowFrame()]
 	}
 
 	img := storage.loadSpriteByName(path)
 	frames := storage.sliceSpriteSheet(img)
 	storage.cache[path] = frames
 
-	return frames[ticker.DefaultTicker.NowFrame()]
+	return frames[storage.ticker.NowFrame()]
 }
 
 func (storage *AssetStorage) sliceSpriteSheet(img *ebiten.Image) []*ebiten.Image {
@@ -63,9 +97,8 @@ func (storage *AssetStorage) sliceSpriteSheet(img *ebiten.Image) []*ebiten.Image
 	return frames
 }
 
-func (storage *AssetStorage) loadSpriteByName(path SpriteID) *ebiten.Image {
-	fmt.Println(string(path))
-	file, err := os.Open(string(path))
+func (storage *AssetStorage) loadSpriteByName(path string) *ebiten.Image {
+	file, err := os.Open(path)
 	if err != nil {
 		log.Fatalf("failed to open image: %v", err)
 	}
@@ -77,4 +110,8 @@ func (storage *AssetStorage) loadSpriteByName(path SpriteID) *ebiten.Image {
 	}
 
 	return ebiten.NewImageFromImage(img)
+}
+
+func (storage *AssetStorage) ConnectToTicker(ticker ticker) {
+	storage.ticker = ticker
 }

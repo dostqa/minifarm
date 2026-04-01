@@ -14,39 +14,44 @@ import (
 var (
 	sampleRate          = 48000        // частота дискретизации
 	AudioGameContext    *audio.Context // Централизованное хранилище состояний аудиосистемы
-	DefaultAudioHandler *AudioHandler
+	DefaultAudioHandler *AudioHandler  // DefaultAudioHandler реагируют на события, запуская звуки
 )
 
 func init() {
 	AudioGameContext = audio.NewContext(sampleRate)
-	DefaultAudioHandler = &AudioHandler{context: AudioGameContext, cache: make(map[string][]byte)}
+	DefaultAudioHandler = &AudioHandler{context: AudioGameContext, cache: make(map[SoundID]*audio.Player)}
 }
+
+// SoundID используется для идентификации звука
+type SoundID = string
+
+const (
+	Axe  SoundID = "./assets/audio/axe.mp3"
+	Step SoundID = "./assets/audio/step.mp3"
+)
 
 type AudioHandler struct {
 	context *audio.Context
-	cache   map[string][]byte
+	cache   map[SoundID]*audio.Player // в кэше хранятся Player'ы
+
+	// Хранятся именно Player'ы, а не сырые данные,
+	// Чтобы не наслаивать звуки друг на друга
 }
 
 // TODO:
 // Обрабатывать ошибки, а не вызывать log.Fatal(err)
-// Думаю в кэше надо хранить Player'ов
 
-func (handler *AudioHandler) LoadStreamFromMP3(path string) *mp3.Stream {
-	// Проверка: нет ли уже данных в кэше
-	if data, ok := handler.cache[path]; ok {
-		return handler.LoadStreamFromData(data)
-	}
-
-	data, err := os.ReadFile(path)
+func (handler *AudioHandler) loadStreamFromMP3(id SoundID) *mp3.Stream {
+	// читаем файл и помещаем весь файл в память
+	data, err := os.ReadFile(id)
 	if err != nil {
 		log.Fatal(err)
 	}
-	handler.cache[path] = data // Добавляем данные в кэш
 
-	return handler.LoadStreamFromData(data)
+	return handler.loadStreamFromData(data)
 }
 
-func (handler *AudioHandler) LoadStreamFromData(data []byte) *mp3.Stream {
+func (handler *AudioHandler) loadStreamFromData(data []byte) *mp3.Stream {
 	reader := bytes.NewReader(data)
 	stream, err := mp3.DecodeWithSampleRate(handler.context.SampleRate(), reader)
 	if err != nil {
@@ -59,18 +64,46 @@ func (handler *AudioHandler) LoadStreamFromData(data []byte) *mp3.Stream {
 func (handler *AudioHandler) Handle(event events.Event) {
 	switch event.Type() {
 	case gametypes.ToolUsedEventType:
-		stream := handler.LoadStreamFromMP3("./assets/audio/axe.mp3")
-		player, err := handler.context.NewPlayer(stream)
-		if err != nil {
-			log.Fatal(err)
+		if player, err := handler.cache[Axe]; err {
+			if player.IsPlaying() {
+				return
+			} else {
+				player.Play()
+			}
 		}
 
+		player := handler.newPlayerFromMP3(Axe)
+		handler.cache[Axe] = player
+		player.Play()
+
+	case gametypes.EntityMovedEventType:
+		if player, err := handler.cache[Step]; err {
+			if player.IsPlaying() {
+				return
+			} else {
+				player.Play()
+			}
+		}
+
+		player := handler.newPlayerFromMP3(Step)
+		handler.cache[Step] = player
 		player.Play()
 	}
 }
 
+func (handler *AudioHandler) newPlayerFromMP3(id SoundID) *audio.Player {
+	stream := handler.loadStreamFromMP3(id)
+
+	player, err := handler.context.NewPlayer(stream)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return player
+}
+
 // Напоминалка самому себе:
-// Таким образом подготавливаем файл, если он большой: (файл частями попадает в память)
+// Таким образом подготавливаем файл, если он большой: (файл постепенно частями попадает в память)
 // f, err := os.Open("sound.mp3")
 // if err != nil {
 //     log.Fatal(err)

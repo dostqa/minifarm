@@ -43,13 +43,33 @@ func (p *PositionComponent) SetY(y float64) {
 // MoveComponent - компонент движения.
 // Любая сущность с этим компонентом может изменять (двигать) свою позицию на карте
 type MoveComponent struct {
+	Publisher
 	*PositionComponent
-	step float64 // длина шага за одно нажатие клавиши
+	step     float64 // длина шага за одно нажатие клавиши
+	velocity gametypes.Vector
+	facing   gametypes.Vector
 }
 
 func (m *MoveComponent) Move(direction gametypes.Vector) {
 	m.SetY(m.Y() + (direction[1] * m.step))
 	m.SetX(m.X() + (direction[0] * m.step))
+
+	m.velocity = direction
+	m.facing = direction
+
+	m.Publish(events.NewEntityMovedEvent())
+}
+
+func (m *MoveComponent) Stop() {
+	m.velocity = gametypes.ZeroVector
+}
+
+func (m *MoveComponent) Velocity() gametypes.Vector {
+	return m.velocity
+}
+
+func (m *MoveComponent) Facing() gametypes.Vector {
+	return m.facing
 }
 
 // Интерфейс описывает, что должен уметь инструмент
@@ -87,11 +107,20 @@ func (bar *ToolbarComponent) ChangeActiveTool(i int) {
 	}
 }
 
-type SpriteComponent struct {
-	storage  *storage.AssetStorage
-	spriteID storage.SpriteID
+// Motion - интерфейс, который отдаёт данные, связанные с движением
+type motion interface {
+	Velocity() gametypes.Vector
+	Facing() gametypes.Vector
 }
 
-func (sprite *SpriteComponent) Sprite() *ebiten.Image {
-	return sprite.storage.GetSpriteByID(sprite.spriteID)
+type SpriteComponent struct {
+	motion
+	storage *storage.AssetStorage
+
+	spritesID storage.SpritesID
+}
+
+func (s *SpriteComponent) Sprite() *ebiten.Image {
+	name := s.spritesID[storage.NewCondition(s.Velocity(), s.Facing())]
+	return s.storage.GetSpriteByName(name)
 }

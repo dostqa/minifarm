@@ -8,6 +8,8 @@ import (
 	"minifarm/internal/events"
 	"minifarm/internal/input"
 	"minifarm/internal/physic"
+	"minifarm/internal/storage"
+	"minifarm/internal/ticker"
 	"os"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -26,6 +28,9 @@ func main() {
 	events.DefaultBus.Subscribe(physic.DefaultHandler, audio.DefaultAudioHandler)
 
 	input.DefaultInput.ConnectToInvoker(&commands.DefaultInvoker)
+	storage.DefaultAssetStorage.ConnectToTicker(ticker.DefaultTicker)
+
+	ebiten.SetWindowSize(600, 600)
 	game := NewGame()
 
 	fmt.Println("Game is started!")

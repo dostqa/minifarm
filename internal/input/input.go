@@ -26,6 +26,8 @@ type Input struct {
 }
 
 func (i *Input) HandleInput(receiver actors.Receiver) error {
+	i.invoker.SetCommand(commands.NewStopCommand(receiver))
+
 	if ebiten.IsKeyPressed(ebiten.KeyW) {
 		i.invoker.SetCommand(commands.NewMoveCommand(receiver, gametypes.UpVector))
 	}

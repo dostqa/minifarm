@@ -3,6 +3,7 @@ package physic
 import (
 	"fmt"
 	"minifarm/internal/events"
+	"minifarm/internal/gametypes"
 )
 
 var (
@@ -13,7 +14,11 @@ type Handler struct {
 }
 
 func (h Handler) Handle(event events.Event) {
-	fmt.Println("Event was got: ", event)
+	switch event.Type() {
+	case gametypes.ToolUsedEventType:
+		fmt.Println("Event was got: ", event)
+	}
+
 }
 
 func NewHandler() *Handler {

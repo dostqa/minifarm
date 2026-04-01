@@ -24,3 +24,21 @@ func NewMoveCommand(receiver actors.Receiver, direction gametypes.Vector) *MoveC
 		direction: direction,
 	}
 }
+
+type StopCommand struct {
+	receiver actors.Receiver
+}
+
+func (c StopCommand) Execute() {
+	if mover, ok := c.receiver.(actors.Mover); ok {
+		mover.Stop()
+	}
+}
+
+func (c StopCommand) Undo() {} // Функция маркер
+
+func NewStopCommand(receiver actors.Receiver) *StopCommand {
+	return &StopCommand{
+		receiver: receiver,
+	}
+}
