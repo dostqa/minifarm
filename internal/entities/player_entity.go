@@ -14,7 +14,7 @@ type Player struct {
 	MoveComponent
 
 	ToolbarComponent
-	SpriteComponent
+	DirectionalSpriteComponent
 }
 
 func NewPlayer(bus *events.Bus, assetStorage *storage.AssetStorage) *Player {
@@ -27,16 +27,16 @@ func NewPlayer(bus *events.Bus, assetStorage *storage.AssetStorage) *Player {
 		ToolbarComponent: ToolbarComponent{
 			tools: [5]Tool{&Axe{}, &Axe{}, &Axe{}, &Axe{}, &Axe{}},
 		},
-		SpriteComponent: SpriteComponent{
-			storage:   storage.DefaultAssetStorage,
-			spritesID: storage.PlayerSprites,
+		DirectionalSpriteComponent: DirectionalSpriteComponent{
+			storage: storage.DefaultAssetStorage,
+			id:      "player",
 		},
 	}
 
 	// прокидываем связь между компонентами
 	p.MoveComponent.PositionComponent = &p.PositionComponent
 	p.ToolbarComponent.PositionComponent = &p.PositionComponent
-	p.SpriteComponent.motion = &p.MoveComponent
+	p.DirectionalSpriteComponent.state = &p.MoveComponent
 
 	p.ToolbarComponent.Publisher = p.Publisher
 	p.MoveComponent.Publisher = p.Publisher
@@ -48,7 +48,7 @@ func NewPlayer(bus *events.Bus, assetStorage *storage.AssetStorage) *Player {
 
 	// подключение к хранилищу ресурсов не по умолчанию
 	if assetStorage != nil {
-		p.SpriteComponent.storage = assetStorage
+		p.DirectionalSpriteComponent.storage = assetStorage
 	}
 
 	return p

@@ -16,6 +16,35 @@ const (
 	FrameCount  = 4
 )
 
+// state - описывает в каком состоянии находится сущность.
+// Если сущность соверщает движение, idle = false
+type state struct {
+	isIdle bool
+	facing gametypes.Vector
+}
+
+var (
+	MovesUp    = state{false, gametypes.UpVector}
+	MovesRight = state{false, gametypes.RightVector}
+	MovesDown  = state{false, gametypes.DownVector}
+	MovesLeft  = state{false, gametypes.LeftVector}
+	LooksUp    = state{true, gametypes.UpVector}
+	LooksRight = state{true, gametypes.RightVector}
+	LooksDown  = state{true, gametypes.DownVector}
+	LooksLeft  = state{true, gametypes.LeftVector}
+)
+
+var spriteViews = map[state]string{
+	MovesUp:    "/moves_up.png",
+	LooksUp:    "/looks_up.png",
+	MovesRight: "/moves_right.png",
+	LooksRight: "/looks_right.png",
+	MovesDown:  "/moves_down.png",
+	LooksDown:  "/looks_down.png",
+	MovesLeft:  "/moves_left.png",
+	LooksLeft:  "/looks_left.png",
+}
+
 var DefaultAssetStorage *AssetStorage
 
 func init() {
@@ -25,62 +54,53 @@ func init() {
 }
 
 // ticker - подсказывает только, какой сейчас кадр.
-// Каждую секунду начинает отсчет сначала
+// Каждую секунду начинает отсчет с начала (то есть с нуля)
 type ticker interface {
 	NowFrame() int
 }
 
-// Condition - описывает в каком состоянии находится сущность.
-// Если сущность соверщает движение velocity != {0, 0}
-type Condition struct {
-	velocity gametypes.Vector
-	facing   gametypes.Vector
-}
-
-var (
-	MovesUp    = Condition{gametypes.UpVector, gametypes.UpVector}
-	MovesRight = Condition{gametypes.RightVector, gametypes.RightVector}
-	MovesDown  = Condition{gametypes.DownVector, gametypes.DownVector}
-	MovesLeft  = Condition{gametypes.LeftVector, gametypes.LeftVector}
-	LooksUp    = Condition{gametypes.ZeroVector, gametypes.UpVector}
-	LooksRight = Condition{gametypes.ZeroVector, gametypes.RightVector}
-	LooksDown  = Condition{gametypes.ZeroVector, gametypes.DownVector}
-	LooksLeft  = Condition{gametypes.ZeroVector, gametypes.LeftVector}
-)
-
-func NewCondition(velocity, facing gametypes.Vector) Condition {
-	return Condition{velocity: velocity, facing: facing}
-}
-
-type SpritesID = map[Condition]string
-
-var PlayerSprites = SpritesID{
-	MovesUp:    "./assets/sprites/player_moves_up.png",
-	MovesRight: "./assets/sprites/player_moves_right.png",
-	MovesDown:  "./assets/sprites/player_moves_down.png",
-	MovesLeft:  "./assets/sprites/player_moves_Left.png",
-	LooksUp:    "./assets/sprites/player_looks_up.png",
-	LooksRight: "./assets/sprites/player_looks_right.png",
-	LooksDown:  "./assets/sprites/player_looks_down.png",
-	LooksLeft:  "./assets/sprites/player_looks_left.png",
-}
-
 type AssetStorage struct {
 	ticker ticker
-	// В кэш изображения складываются только для одного состояния (одного пути)
+	// В кэш изображения складываются только для одного состояния (одного файлового пути)
 	cache map[string][]*ebiten.Image
 }
 
-func (storage *AssetStorage) GetSpriteByName(path string) *ebiten.Image {
+func (storage *AssetStorage) GetDirectionalSprite(id string, isIdle bool, facing gametypes.Vector) *ebiten.Image {
+	state := state{isIdle, facing}
+	path := "./assets/sprites/" + id + spriteViews[state]
+	return storage.getSpriteByPath(path)
+}
+
+func (storage *AssetStorage) GetSingleSprite(id string) *ebiten.Image {
+	path := "./assets/sprites/" + id + "/animation"
+	return storage.getSpriteByPath(path)
+}
+
+func (storage *AssetStorage) getSpriteByPath(path string) *ebiten.Image {
 	if frames, ok := storage.cache[path]; ok {
 		return frames[storage.ticker.NowFrame()]
 	}
 
-	img := storage.loadSpriteByName(path)
+	img := storage.loadSpriteByPath(path)
 	frames := storage.sliceSpriteSheet(img)
 	storage.cache[path] = frames
 
 	return frames[storage.ticker.NowFrame()]
+}
+
+func (storage *AssetStorage) loadSpriteByPath(path string) *ebiten.Image {
+	file, err := os.Open(path)
+	if err != nil {
+		log.Fatalf("failed to open image: %v", err)
+	}
+	defer file.Close()
+
+	img, _, err := image.Decode(file)
+	if err != nil {
+		log.Fatalf("failed to decode image: %v", err)
+	}
+
+	return ebiten.NewImageFromImage(img)
 }
 
 func (storage *AssetStorage) sliceSpriteSheet(img *ebiten.Image) []*ebiten.Image {
@@ -95,21 +115,6 @@ func (storage *AssetStorage) sliceSpriteSheet(img *ebiten.Image) []*ebiten.Image
 	}
 
 	return frames
-}
-
-func (storage *AssetStorage) loadSpriteByName(path string) *ebiten.Image {
-	file, err := os.Open(path)
-	if err != nil {
-		log.Fatalf("failed to open image: %v", err)
-	}
-	defer file.Close()
-
-	img, _, err := image.Decode(file)
-	if err != nil {
-		log.Fatalf("failed to decode image: %v", err)
-	}
-
-	return ebiten.NewImageFromImage(img)
 }
 
 func (storage *AssetStorage) ConnectToTicker(ticker ticker) {

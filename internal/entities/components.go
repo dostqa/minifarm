@@ -3,9 +3,6 @@ package entities
 import (
 	"minifarm/internal/events"
 	"minifarm/internal/gametypes"
-	"minifarm/internal/storage"
-
-	"github.com/hajimehoshi/ebiten/v2"
 )
 
 // Publisher - издатель.
@@ -64,15 +61,18 @@ func (m *MoveComponent) Stop() {
 	m.velocity = gametypes.ZeroVector
 }
 
-func (m *MoveComponent) Velocity() gametypes.Vector {
-	return m.velocity
+func (m *MoveComponent) isIdle() bool {
+	if m.velocity != gametypes.ZeroVector {
+		return false
+	}
+	return true
 }
 
-func (m *MoveComponent) Facing() gametypes.Vector {
+func (m *MoveComponent) facingVector() gametypes.Vector {
 	return m.facing
 }
 
-// Интерфейс описывает, что должен уметь инструмент
+// Интерфейс Tool описывает, что должен уметь инструмент
 type Tool interface {
 	Type() gametypes.ToolType
 }
@@ -105,22 +105,4 @@ func (bar *ToolbarComponent) ChangeActiveTool(i int) {
 	} else {
 		return
 	}
-}
-
-// Motion - интерфейс, который отдаёт данные, связанные с движением
-type motion interface {
-	Velocity() gametypes.Vector
-	Facing() gametypes.Vector
-}
-
-type SpriteComponent struct {
-	motion
-	storage *storage.AssetStorage
-
-	spritesID storage.SpritesID
-}
-
-func (s *SpriteComponent) Sprite() *ebiten.Image {
-	name := s.spritesID[storage.NewCondition(s.Velocity(), s.Facing())]
-	return s.storage.GetSpriteByName(name)
 }
