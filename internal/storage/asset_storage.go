@@ -72,7 +72,7 @@ func (storage *AssetStorage) GetDirectionalSprite(id string, isIdle bool, facing
 }
 
 func (storage *AssetStorage) GetSingleSprite(id string) *ebiten.Image {
-	path := "./assets/sprites/" + id + "/animation"
+	path := "./assets/sprites/" + id + "/animation.png"
 	return storage.getSpriteByPath(path)
 }
 
