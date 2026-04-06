@@ -26,22 +26,31 @@ type Input struct {
 }
 
 func (i *Input) HandleInput(receiver actors.Receiver) error {
-	i.invoker.SetCommand(commands.NewStopCommand(receiver))
+	pressed := false // флаг, что какая-то клавиша нажата
 
 	if ebiten.IsKeyPressed(ebiten.KeyW) {
 		i.invoker.SetCommand(commands.NewMoveCommand(receiver, gametypes.UpVector))
+		pressed = true
 	}
 
 	if ebiten.IsKeyPressed(ebiten.KeyS) {
 		i.invoker.SetCommand(commands.NewMoveCommand(receiver, gametypes.DownVector))
+		pressed = true
 	}
 
 	if ebiten.IsKeyPressed(ebiten.KeyD) {
 		i.invoker.SetCommand(commands.NewMoveCommand(receiver, gametypes.RightVector))
+		pressed = true
 	}
 
 	if ebiten.IsKeyPressed(ebiten.KeyA) {
 		i.invoker.SetCommand(commands.NewMoveCommand(receiver, gametypes.LeftVector))
+		pressed = true
+	}
+
+	// если ни одна клавиша не нажата → остановка
+	if !pressed {
+		i.invoker.SetCommand(commands.NewStopCommand(receiver))
 	}
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyG) {

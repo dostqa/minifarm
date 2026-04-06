@@ -4,6 +4,7 @@ import (
 	"minifarm/internal/events"
 	"minifarm/internal/gametypes"
 	"minifarm/internal/storage"
+	"minifarm/internal/ticker"
 )
 
 // Composition Player
@@ -12,12 +13,13 @@ type Player struct {
 
 	PositionComponent
 	MoveComponent
+	StateComponent
 
 	ToolbarComponent
 	DirectionalSpriteComponent
 }
 
-func NewPlayer(bus *events.Bus, assetStorage *storage.AssetStorage) *Player {
+func NewPlayer(customEventBus *events.Bus, customAssetStorage *storage.AssetStorage, customTicker *ticker.Ticker) *Player {
 	p := &Player{
 		Publisher: &events.DefaultBus,
 		MoveComponent: MoveComponent{
@@ -29,31 +31,36 @@ func NewPlayer(bus *events.Bus, assetStorage *storage.AssetStorage) *Player {
 		},
 		DirectionalSpriteComponent: DirectionalSpriteComponent{
 			storage: storage.DefaultAssetStorage,
-			animationInfo: animationInfo{
-				id:          "player",
-				frameCount:  4,
-				frameWidth:  16,
-				frameHeight: 16,
-			},
+			id:      "player",
 		},
 	}
 
 	// прокидываем связь между компонентами
+	p.MoveComponent.Publisher = p.Publisher
 	p.MoveComponent.PositionComponent = &p.PositionComponent
-	p.ToolbarComponent.PositionComponent = &p.PositionComponent
-	p.DirectionalSpriteComponent.state = &p.MoveComponent
+	p.MoveComponent.StateSetter = &p.StateComponent
 
 	p.ToolbarComponent.Publisher = p.Publisher
-	p.MoveComponent.Publisher = p.Publisher
+	p.ToolbarComponent.PositionComponent = &p.PositionComponent
+
+	p.StateComponent.Ticker = ticker.DefaultTicker
+
+	p.DirectionalSpriteComponent.FacingGetter = &p.MoveComponent
+	p.DirectionalSpriteComponent.StateGetter = &p.StateComponent
 
 	// подключение к шине событий не по умолчанию
-	if bus != nil {
-		p.Publisher = bus
+	if customEventBus != nil {
+		p.Publisher = customEventBus
 	}
 
 	// подключение к хранилищу ресурсов не по умолчанию
-	if assetStorage != nil {
-		p.DirectionalSpriteComponent.storage = assetStorage
+	if customAssetStorage != nil {
+		p.DirectionalSpriteComponent.storage = customAssetStorage
+	}
+
+	// подключение к тикеру не по умолчанию
+	if customTicker != nil {
+		p.StateComponent.Ticker = customTicker
 	}
 
 	return p

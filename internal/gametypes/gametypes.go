@@ -32,3 +32,10 @@ const (
 	// Связанные со звуками
 	EntityMovedEventType
 )
+
+type StateName int
+
+const (
+	IdleStateName StateName = iota
+	MoveStateName
+)

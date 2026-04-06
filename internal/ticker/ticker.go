@@ -15,6 +15,10 @@ func (t *Ticker) Update() {
 	t.ticksSinceLaunch++
 }
 
+func (t *Ticker) Now() int {
+	return t.ticksSinceLaunch
+}
+
 func (t *Ticker) NowTick() int {
 	return t.ticksSinceLaunch % t.ticksPerSecond
 }

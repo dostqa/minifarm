@@ -1,50 +1,51 @@
 package storage
 
 import (
+	"encoding/json"
 	"image"
 	_ "image/png"
 	"log"
 	"minifarm/internal/gametypes"
 	"os"
+	"path/filepath"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
-
-// state - описывает в каком состоянии находится сущность.
-// Если сущность соверщает движение, idle = false
-type state struct {
-	isIdle bool
-	facing gametypes.Vector
-}
-
-var (
-	MovesUp    = state{false, gametypes.UpVector}
-	MovesRight = state{false, gametypes.RightVector}
-	MovesDown  = state{false, gametypes.DownVector}
-	MovesLeft  = state{false, gametypes.LeftVector}
-	LooksUp    = state{true, gametypes.UpVector}
-	LooksRight = state{true, gametypes.RightVector}
-	LooksDown  = state{true, gametypes.DownVector}
-	LooksLeft  = state{true, gametypes.LeftVector}
-)
-
-var spriteViews = map[state]string{
-	MovesUp:    "/moves_up.png",
-	LooksUp:    "/looks_up.png",
-	MovesRight: "/moves_right.png",
-	LooksRight: "/looks_right.png",
-	MovesDown:  "/moves_down.png",
-	LooksDown:  "/looks_down.png",
-	MovesLeft:  "/moves_left.png",
-	LooksLeft:  "/looks_left.png",
-}
 
 var DefaultAssetStorage *AssetStorage
 
 func init() {
 	DefaultAssetStorage = &AssetStorage{
-		cache: make(map[string][]*ebiten.Image),
+		imageCache: make(map[string][]*ebiten.Image),
+		infoCache:  make(map[string]*spriteSheetInfo),
 	}
+}
+
+func infoPath(id string) string {
+	return filepath.Join("assets", "sprites", id, "info.json")
+}
+
+func imagePath(id string, state gametypes.StateName, facing gametypes.Vector) string {
+	return filepath.Join("assets", "sprites", id, stateToString[state]+facingToString[facing]+".png")
+}
+
+type spriteSheetInfo struct {
+	FrameCount  int
+	FrameWidth  int
+	FrameHeight int
+}
+
+var stateToString = map[gametypes.StateName]string{
+	gametypes.IdleStateName: "idle",
+	gametypes.MoveStateName: "moves",
+}
+
+var facingToString = map[gametypes.Vector]string{
+	gametypes.ZeroVector:  "",
+	gametypes.UpVector:    "up",
+	gametypes.RightVector: "right",
+	gametypes.DownVector:  "down",
+	gametypes.LeftVector:  "left",
 }
 
 // ticker - подсказывает только, какой сейчас тик.
@@ -55,59 +56,62 @@ type ticker interface {
 	TicksPerSecond() int
 }
 
-// SpriteInfoProvider предоставляет информацию о спрайте и его анимации
-type SpriteInfoProvider interface {
-	ID() string
-	FrameCount() int
-	FrameWidth() int
-	FrameHeight() int
-}
-
-// SpriteStateInfoProvider предоставляет информацию о своём состоянии
-type SpriteStateInfoProvider interface {
-	IsIdle() bool
-	Facing() gametypes.Vector
-}
-
 type AssetStorage struct {
 	ticker ticker
 	// В кэш изображения складываются только для одного состояния (одного файлового пути)
-	cache map[string][]*ebiten.Image
+	imageCache map[string][]*ebiten.Image
+	infoCache  map[string]*spriteSheetInfo
 }
 
-func (storage *AssetStorage) GetSprite(provider SpriteInfoProvider) *ebiten.Image {
-	nowFrame := storage.nowFrame(provider.FrameCount())
-	path := storage.getPath(provider)
+func (storage *AssetStorage) GetSprite(id string, state gametypes.StateName, facing gametypes.Vector) *ebiten.Image {
+	info := storage.getInfo(infoPath(id))
 
-	// Пытаемся получить спрайт из кэша
-	sprite, ok := storage.getSpriteFromCacheByPath(path, nowFrame)
+	// Считаем какой нужен кадр анимации
+	nowFrame := storage.nowFrame(info.FrameCount)
+	path := imagePath(id, state, facing)
+
+	// Пытаемся получить кадр из кэша
+	sprite, ok := storage.getFrameFromCacheByPath(path, nowFrame)
 	if ok {
 		return sprite
 	}
 
-	// Если в кэше нет нужного спрайта:
+	// Если в кэше нет нужного спрайтшита:
 	// Загружаем спрайтшит с диска
 	spriteSheet := storage.loadSpriteSheetByPath(path)
 	// Нарезаем спрайтшит на кадры
-	frames := storage.sliceSpriteSheet(spriteSheet, provider.FrameWidth(), provider.FrameHeight(), provider.FrameCount())
+	frames := storage.sliceSpriteSheet(spriteSheet, info.FrameWidth, info.FrameHeight, info.FrameCount)
 	// Сохраняем кадры в кэш
-	storage.cache[path] = frames
-
+	storage.imageCache[path] = frames
 	return frames[nowFrame]
 }
 
-func (storage *AssetStorage) getPath(provider SpriteInfoProvider) string {
-	path := "./assets/sprites/" + provider.ID() + "/animation.png"
-
-	if s, ok := provider.(SpriteStateInfoProvider); ok {
-		state := state{s.IsIdle(), s.Facing()}
-		path = "./assets/sprites/" + provider.ID() + spriteViews[state]
+func (storage *AssetStorage) getInfo(path string) *spriteSheetInfo {
+	if info, ok := storage.infoCache[path]; ok {
+		return info
 	}
-	return path
+
+	info, err := storage.loadInfo(path)
+	if err != nil {
+		log.Fatalf("failed to load info: %v", err)
+	}
+	storage.infoCache[path] = info
+	return info
 }
 
-func (storage *AssetStorage) getSpriteFromCacheByPath(path string, nowFrame int) (*ebiten.Image, bool) {
-	if frames, ok := storage.cache[path]; ok {
+func (storage *AssetStorage) loadInfo(path string) (*spriteSheetInfo, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	info := &spriteSheetInfo{}
+	err = json.Unmarshal(data, info)
+	return info, err
+}
+
+func (storage *AssetStorage) getFrameFromCacheByPath(path string, nowFrame int) (*ebiten.Image, bool) {
+	if frames, ok := storage.imageCache[path]; ok {
 		return frames[nowFrame], ok
 	}
 

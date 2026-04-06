@@ -10,25 +10,20 @@ type Tree struct {
 	SingleSpriteComponent
 }
 
-func NewTree(position gametypes.Point, assetStorage *storage.AssetStorage) *Tree {
+func NewTree(position gametypes.Point, customAssetStorage *storage.AssetStorage) *Tree {
 	t := &Tree{
 		PositionComponent: PositionComponent{
 			position: position,
 		},
 		SingleSpriteComponent: SingleSpriteComponent{
 			storage: storage.DefaultAssetStorage,
-			animationInfo: animationInfo{
-				id:          "tree",
-				frameCount:  4,
-				frameWidth:  16,
-				frameHeight: 16,
-			},
+			id:      "tree",
 		},
 	}
 
 	// подключение к хранилищу ресурсов не по умолчанию
-	if assetStorage != nil {
-		t.SingleSpriteComponent.storage = assetStorage
+	if customAssetStorage != nil {
+		t.SingleSpriteComponent.storage = customAssetStorage
 	}
 
 	return t

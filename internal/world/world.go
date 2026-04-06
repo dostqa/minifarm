@@ -37,7 +37,7 @@ func (w *World) SpawnGroundLayer() {
 }
 
 func (w *World) SpawnPlayer() {
-	w.player = entities.NewPlayer(nil, nil)
+	w.player = entities.NewPlayer(nil, nil, nil)
 	w.Add(w.player)
 }
 
