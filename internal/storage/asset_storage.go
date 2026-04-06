@@ -10,12 +10,6 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-const (
-	FrameWidth  = 16
-	FrameHeight = 16
-	FrameCount  = 4
-)
-
 // state - описывает в каком состоянии находится сущность.
 // Если сущность соверщает движение, idle = false
 type state struct {
@@ -53,10 +47,26 @@ func init() {
 	}
 }
 
-// ticker - подсказывает только, какой сейчас кадр.
+// ticker - подсказывает только, какой сейчас тик.
 // Каждую секунду начинает отсчет с начала (то есть с нуля)
+// и считает до TicksPerSecond() - 1
 type ticker interface {
-	NowFrame() int
+	NowTick() int
+	TicksPerSecond() int
+}
+
+// SpriteInfoProvider предоставляет информацию о спрайте и его анимации
+type SpriteInfoProvider interface {
+	ID() string
+	FrameCount() int
+	FrameWidth() int
+	FrameHeight() int
+}
+
+// SpriteStateInfoProvider предоставляет информацию о своём состоянии
+type SpriteStateInfoProvider interface {
+	IsIdle() bool
+	Facing() gametypes.Vector
 }
 
 type AssetStorage struct {
@@ -65,30 +75,46 @@ type AssetStorage struct {
 	cache map[string][]*ebiten.Image
 }
 
-func (storage *AssetStorage) GetDirectionalSprite(id string, isIdle bool, facing gametypes.Vector) *ebiten.Image {
-	state := state{isIdle, facing}
-	path := "./assets/sprites/" + id + spriteViews[state]
-	return storage.getSpriteByPath(path)
-}
+func (storage *AssetStorage) GetSprite(provider SpriteInfoProvider) *ebiten.Image {
+	nowFrame := storage.nowFrame(provider.FrameCount())
+	path := storage.getPath(provider)
 
-func (storage *AssetStorage) GetSingleSprite(id string) *ebiten.Image {
-	path := "./assets/sprites/" + id + "/animation.png"
-	return storage.getSpriteByPath(path)
-}
-
-func (storage *AssetStorage) getSpriteByPath(path string) *ebiten.Image {
-	if frames, ok := storage.cache[path]; ok {
-		return frames[storage.ticker.NowFrame()]
+	// Пытаемся получить спрайт из кэша
+	sprite, ok := storage.getSpriteFromCacheByPath(path, nowFrame)
+	if ok {
+		return sprite
 	}
 
-	img := storage.loadSpriteByPath(path)
-	frames := storage.sliceSpriteSheet(img)
+	// Если в кэше нет нужного спрайта:
+	// Загружаем спрайтшит с диска
+	spriteSheet := storage.loadSpriteSheetByPath(path)
+	// Нарезаем спрайтшит на кадры
+	frames := storage.sliceSpriteSheet(spriteSheet, provider.FrameWidth(), provider.FrameHeight(), provider.FrameCount())
+	// Сохраняем кадры в кэш
 	storage.cache[path] = frames
 
-	return frames[storage.ticker.NowFrame()]
+	return frames[nowFrame]
 }
 
-func (storage *AssetStorage) loadSpriteByPath(path string) *ebiten.Image {
+func (storage *AssetStorage) getPath(provider SpriteInfoProvider) string {
+	path := "./assets/sprites/" + provider.ID() + "/animation.png"
+
+	if s, ok := provider.(SpriteStateInfoProvider); ok {
+		state := state{s.IsIdle(), s.Facing()}
+		path = "./assets/sprites/" + provider.ID() + spriteViews[state]
+	}
+	return path
+}
+
+func (storage *AssetStorage) getSpriteFromCacheByPath(path string, nowFrame int) (*ebiten.Image, bool) {
+	if frames, ok := storage.cache[path]; ok {
+		return frames[nowFrame], ok
+	}
+
+	return nil, false
+}
+
+func (storage *AssetStorage) loadSpriteSheetByPath(path string) *ebiten.Image {
 	file, err := os.Open(path)
 	if err != nil {
 		log.Fatalf("failed to open image: %v", err)
@@ -103,18 +129,22 @@ func (storage *AssetStorage) loadSpriteByPath(path string) *ebiten.Image {
 	return ebiten.NewImageFromImage(img)
 }
 
-func (storage *AssetStorage) sliceSpriteSheet(img *ebiten.Image) []*ebiten.Image {
-	frames := make([]*ebiten.Image, FrameCount)
+func (storage *AssetStorage) sliceSpriteSheet(img *ebiten.Image, frameWidth, frameHeight, frameCount int) []*ebiten.Image {
+	frames := make([]*ebiten.Image, frameCount)
 
-	for i := 0; i < FrameCount; i++ {
+	for i := 0; i < frameCount; i++ {
 		frame := image.Rect(
-			i*FrameWidth, 0, // левый верхний угол
-			(i+1)*FrameWidth, FrameHeight, // правый нижний угол
+			i*frameWidth, 0, // левый верхний угол
+			(i+1)*frameWidth, frameHeight, // правый нижний угол
 		)
 		frames[i] = ebiten.NewImageFromImage(img.SubImage(frame))
 	}
 
 	return frames
+}
+
+func (storage *AssetStorage) nowFrame(frameCount int) int {
+	return storage.ticker.NowTick() / (storage.ticker.TicksPerSecond() / frameCount)
 }
 
 func (storage *AssetStorage) ConnectToTicker(ticker ticker) {

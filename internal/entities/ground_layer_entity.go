@@ -5,23 +5,23 @@ import (
 	"minifarm/internal/storage"
 )
 
-type Tree struct {
+type GroundLayer struct {
 	PositionComponent
 	SingleSpriteComponent
 }
 
-func NewTree(position gametypes.Point, assetStorage *storage.AssetStorage) *Tree {
+func NewGroundLayer(assetStorage *storage.AssetStorage) *Tree {
 	t := &Tree{
 		PositionComponent: PositionComponent{
-			position: position,
+			position: gametypes.Point{0, 0},
 		},
 		SingleSpriteComponent: SingleSpriteComponent{
 			storage: storage.DefaultAssetStorage,
 			animationInfo: animationInfo{
-				id:          "tree",
-				frameCount:  4,
-				frameWidth:  16,
-				frameHeight: 16,
+				id:          "groundlayer",
+				frameCount:  1,
+				frameWidth:  256,
+				frameHeight: 144,
 			},
 		},
 	}

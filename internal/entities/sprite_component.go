@@ -9,31 +9,62 @@ import (
 
 // state - интерфейс, который отдаёт данные, связанные с движением
 type state interface {
-	isIdle() bool
-	facingVector() gametypes.Vector
+	IsIdle() bool
+	Facing() gametypes.Vector
 }
 
-type DirectionalSpriteComponent struct {
-	state   state
-	storage *storage.AssetStorage
-
-	id string
-}
-
-// Sprite - частично реализует поведение интерфейса render.Spriter,
-// отдаёт на рендер спрайт.
-func (s *DirectionalSpriteComponent) Sprite() *ebiten.Image {
-	return s.storage.GetDirectionalSprite(s.id, s.state.isIdle(), s.state.facingVector())
-}
-
+// SingleSpriteComponent - используется для статичных сущностей
 type SingleSpriteComponent struct {
 	storage *storage.AssetStorage
 
-	id string
+	animationInfo
 }
 
 // Sprite - частично реализует поведение интерфейса render.Spriter,
 // отдаёт на рендер спрайт.
 func (s *SingleSpriteComponent) Sprite() *ebiten.Image {
-	return s.storage.GetSingleSprite(s.id)
+	return s.storage.GetSprite(s)
+}
+
+// DirectionalSpriteComponent - используется для сущностей,
+// способных двигаться в пространстве
+type DirectionalSpriteComponent struct {
+	state
+	storage *storage.AssetStorage
+
+	animationInfo
+}
+
+// Sprite - частично реализует поведение интерфейса render.Spriter,
+// отдаёт на рендер спрайт.
+func (s *DirectionalSpriteComponent) Sprite() *ebiten.Image {
+	return s.storage.GetSprite(s)
+}
+
+// animationInfo хранит информацию об используемой анимации.
+type animationInfo struct {
+	id          string
+	frameCount  int
+	frameWidth  int
+	frameHeight int
+}
+
+// методы ниже реализует поведение
+// интерфейса SpriteInfoProvider
+// из пакета storage
+
+func (c *animationInfo) ID() string {
+	return c.id
+}
+
+func (c *animationInfo) FrameCount() int {
+	return c.frameCount
+}
+
+func (c *animationInfo) FrameWidth() int {
+	return c.frameWidth
+}
+
+func (c *animationInfo) FrameHeight() int {
+	return c.frameHeight
 }

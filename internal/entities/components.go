@@ -61,14 +61,14 @@ func (m *MoveComponent) Stop() {
 	m.velocity = gametypes.ZeroVector
 }
 
-func (m *MoveComponent) isIdle() bool {
+func (m *MoveComponent) IsIdle() bool {
 	if m.velocity != gametypes.ZeroVector {
 		return false
 	}
 	return true
 }
 
-func (m *MoveComponent) facingVector() gametypes.Vector {
+func (m *MoveComponent) Facing() gametypes.Vector {
 	return m.facing
 }
 

@@ -21,7 +21,7 @@ func NewPlayer(bus *events.Bus, assetStorage *storage.AssetStorage) *Player {
 	p := &Player{
 		Publisher: &events.DefaultBus,
 		MoveComponent: MoveComponent{
-			step:   3,
+			step:   1,
 			facing: gametypes.DownVector,
 		},
 		ToolbarComponent: ToolbarComponent{
@@ -29,7 +29,12 @@ func NewPlayer(bus *events.Bus, assetStorage *storage.AssetStorage) *Player {
 		},
 		DirectionalSpriteComponent: DirectionalSpriteComponent{
 			storage: storage.DefaultAssetStorage,
-			id:      "player",
+			animationInfo: animationInfo{
+				id:          "player",
+				frameCount:  4,
+				frameWidth:  16,
+				frameHeight: 16,
+			},
 		},
 	}
 

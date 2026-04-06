@@ -32,12 +32,12 @@ func (i *Input) HandleInput(receiver actors.Receiver) error {
 		i.invoker.SetCommand(commands.NewMoveCommand(receiver, gametypes.UpVector))
 	}
 
-	if ebiten.IsKeyPressed(ebiten.KeyD) {
-		i.invoker.SetCommand(commands.NewMoveCommand(receiver, gametypes.RightVector))
-	}
-
 	if ebiten.IsKeyPressed(ebiten.KeyS) {
 		i.invoker.SetCommand(commands.NewMoveCommand(receiver, gametypes.DownVector))
+	}
+
+	if ebiten.IsKeyPressed(ebiten.KeyD) {
+		i.invoker.SetCommand(commands.NewMoveCommand(receiver, gametypes.RightVector))
 	}
 
 	if ebiten.IsKeyPressed(ebiten.KeyA) {

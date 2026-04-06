@@ -8,6 +8,7 @@ import (
 	"minifarm/internal/events"
 	"minifarm/internal/input"
 	"minifarm/internal/physic"
+	"minifarm/internal/render"
 	"minifarm/internal/storage"
 	"minifarm/internal/ticker"
 	"os"
@@ -30,7 +31,7 @@ func main() {
 	input.DefaultInput.ConnectToInvoker(&commands.DefaultInvoker)
 	storage.DefaultAssetStorage.ConnectToTicker(ticker.DefaultTicker)
 
-	ebiten.SetWindowSize(600, 600)
+	ebiten.SetWindowSize(render.Width*render.ScaleValue, render.Height*render.ScaleValue)
 	game := NewGame()
 
 	fmt.Println("Game is started!")

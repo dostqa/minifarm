@@ -18,7 +18,6 @@ type Render struct{}
 
 func (r *Render) Render(screen *ebiten.Image, object Spriter) {
 	options := &ebiten.DrawImageOptions{}
-	options.GeoM.Scale(5, 5)
 	options.GeoM.Translate(object.X(), object.Y())
 
 	screen.DrawImage(object.Sprite(), options)
